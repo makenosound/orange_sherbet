@@ -1,34 +1,38 @@
-// TodoMVC the way this repo's approach intends: defo binds a viewFn to every
-// node that enters the DOM, so behaviour is split across two view functions —
+// TodoMVC with defo's update() driving the individual todo items.
 //
-//   todoItemViewFn  bound to each <li> (toggle / destroy / edit). Holds no
-//                   state; it reads its id from the node and dispatches intents
-//                   that bubble to the root. Edit mode is local DOM state.
+//   todomvcViewFn  the root. Owns state (a closure) and the reducer. Items and
+//                  controls talk to it with bubbling intents (the main reducer
+//                  is event-driven, not attribute-driven). On a change it
+//                  reconciles the <ul>: it sets each <li>'s data-defo-todo-item
+//                  attribute to that todo's JSON, adds <li>s for new todos, and
+//                  removes them for gone ones.
 //
-//   todomvcViewFn   owns the todos, filter, and persistence. Renders with
-//                   Orange Sherbet and *morphs* the list in (not innerHTML), so
-//                   defo only binds/destroys the <li>s that actually enter or
-//                   leave, and an item being edited survives an unrelated
-//                   re-render untouched.
+//   todoItemViewFn defo binds it to each <li>. The <li>'s data-defo-todo-item
+//                  attribute is the item's props; defo calls the item's
+//                  update(todo) whenever that attribute changes, and the item
+//                  re-renders its own content from it (Orange Sherbet's
+//                  todo_item_content). It emits intents up and owns edit mode.
 //
-// morphlex / @icelab/defo are resolved via the import map in index.html (and
-// via node_modules under test).
-import { morph } from "morphlex";
-import todoList from "./compiled/todo_list.js";
+//   reduce         pure state transitions (no DOM)
+//
+// @icelab/defo resolves via the import map in index.html (and node_modules
+// under test).
+import todoItem from "./compiled/todo_item.js";
+import todoItemContent from "./compiled/todo_item_content.js";
 import todoFooter from "./compiled/todo_footer.js";
 
 const STORAGE_KEY = "orange-sherbet-todomvc";
 
-const seed = () => [
+const seedTodos = () => [
   { id: 1, title: "Taste the orange sherbet", completed: true },
   { id: 2, title: "Render this list with Orange Sherbet", completed: false },
 ];
 
-const load = () => {
+const loadTodos = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? seed();
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? seedTodos();
   } catch {
-    return seed();
+    return seedTodos();
   }
 };
 
@@ -37,62 +41,91 @@ const filterFromHash = () => {
   return hash === "active" || hash === "completed" ? hash : "all";
 };
 
+const nextId = (todos) => todos.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+
+const visible = (state) =>
+  state.todos.filter((t) =>
+    state.filter === "active" ? !t.completed : state.filter === "completed" ? t.completed : true,
+  );
+
 const parse = (html) => {
   const template = document.createElement("template");
   template.innerHTML = html.trim();
   return template.content.firstElementChild;
 };
 
-const emit = (node, type, detail) =>
-  node.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
+// --- pure state transitions ------------------------------------------------
 
-// --- per-item view -------------------------------------------------------
+export const reduce = (state, action) => {
+  switch (action.type) {
+    case "add":
+      return {
+        ...state,
+        todos: [...state.todos, { id: nextId(state.todos), title: action.title, completed: false }],
+      };
+    case "toggle":
+      return {
+        ...state,
+        todos: state.todos.map((t) => (t.id === action.id ? { ...t, completed: !t.completed } : t)),
+      };
+    case "edit":
+      return { ...state, editing: action.id };
+    case "cancel":
+      return { ...state, editing: null };
+    case "save":
+      return {
+        ...state,
+        editing: null,
+        todos: state.todos.map((t) => (t.id === action.id ? { ...t, title: action.title } : t)),
+      };
+    case "destroy":
+      return {
+        ...state,
+        editing: state.editing === action.id ? null : state.editing,
+        todos: state.todos.filter((t) => t.id !== action.id),
+      };
+    case "toggleAll":
+      return { ...state, todos: state.todos.map((t) => ({ ...t, completed: action.completed })) };
+    case "clearCompleted":
+      return { ...state, todos: state.todos.filter((t) => !t.completed) };
+    case "filter":
+      return { ...state, filter: action.filter };
+    default:
+      return state;
+  }
+};
 
-export const todoItemViewFn = (li) => {
-  const id = Number(li.dataset.id);
-  const editInput = li.querySelector(".edit");
-  const label = li.querySelector("label");
+// --- per-item view: props in via the attribute, intents out via events -----
 
-  const enterEdit = () => {
-    li.classList.add("editing");
-    li.setAttribute("data-editing", "");
-    editInput.value = label.textContent;
-    editInput.focus();
-    editInput.setSelectionRange(editInput.value.length, editInput.value.length);
-  };
+export const todoItemViewFn = (li, props) => {
+  const id = props.id;
+  const emit = (type, detail) => li.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
+  const editValue = () => li.querySelector(".edit").value.trim();
 
-  const exitEdit = () => {
-    li.classList.remove("editing");
-    li.removeAttribute("data-editing");
-  };
-
-  const commit = () => {
-    const title = editInput.value.trim();
-    exitEdit(); // before emitting, so the root's morph reconciles this <li>
-    emit(li, title ? "todo:save" : "todo:destroy", { id, title });
-  };
-
+  // All interactions are intents — edit mode is state, owned by the reducer.
   const onChange = (event) => {
-    if (event.target.matches(".toggle")) emit(li, "todo:toggle", { id });
+    if (event.target.matches(".toggle")) emit("todo:toggle", { id });
   };
   const onClick = (event) => {
-    if (event.target.matches(".destroy")) emit(li, "todo:destroy", { id });
+    if (event.target.matches(".destroy")) emit("todo:destroy", { id });
   };
   const onDblclick = (event) => {
-    if (event.target.matches("label")) enterEdit();
+    if (event.target.matches("label")) emit("todo:edit", { id });
   };
   const onKeydown = (event) => {
     if (!event.target.matches(".edit")) return;
-    if (event.key === "Enter") commit();
-    else if (event.key === "Escape") {
-      editInput.value = label.textContent;
-      exitEdit();
-    }
+    if (event.key === "Enter") emit("todo:save", { id, title: editValue() });
+    else if (event.key === "Escape") emit("todo:cancel", { id });
   };
   const onBlur = (event) => {
-    if (event.target.matches(".edit") && li.classList.contains("editing")) commit();
+    // Only commit if still editing — the state-driven exit removes the .editing
+    // class before the input is replaced, so this won't double-fire after Enter.
+    if (event.target.matches(".edit") && li.classList.contains("editing")) {
+      emit("todo:save", { id, title: editValue() });
+    }
   };
 
+  // Listeners live on the <li>, so they survive the content being re-rendered.
   li.addEventListener("change", onChange);
   li.addEventListener("click", onClick);
   li.addEventListener("dblclick", onDblclick);
@@ -100,6 +133,25 @@ export const todoItemViewFn = (li) => {
   li.addEventListener("blur", onBlur, true);
 
   return {
+    // defo calls this when data-defo-todo-item changes. The item reflects its
+    // props, including `editing`: entering edit focuses the field; otherwise it
+    // re-renders its content. Entering only fires on the false→true transition,
+    // so an in-progress edit isn't reset by an unrelated re-render.
+    update(todo) {
+      li.classList.toggle("completed", todo.completed);
+      if (todo.editing) {
+        if (!li.classList.contains("editing")) {
+          li.classList.add("editing");
+          const edit = li.querySelector(".edit");
+          edit.value = todo.title;
+          edit.focus();
+          edit.setSelectionRange(edit.value.length, edit.value.length);
+        }
+      } else {
+        li.classList.remove("editing");
+        li.innerHTML = todoItemContent({ todo });
+      }
+    },
     destroy() {
       li.removeEventListener("change", onChange);
       li.removeEventListener("click", onClick);
@@ -110,12 +162,10 @@ export const todoItemViewFn = (li) => {
   };
 };
 
-// --- root view -----------------------------------------------------------
+// --- root view: state + reducer + list reconciliation ----------------------
 
 export const todomvcViewFn = (root) => {
-  let todos = load();
-  let nextId = todos.reduce((max, t) => Math.max(max, t.id), 0) + 1;
-  let filter = filterFromHash();
+  let state = { todos: loadTodos(), filter: filterFromHash(), editing: null };
 
   const listMount = root.querySelector(".list-mount");
   const footerMount = root.querySelector(".footer-mount");
@@ -123,83 +173,90 @@ export const todomvcViewFn = (root) => {
   const toggleAll = root.querySelector(".toggle-all");
   const newTodo = root.querySelector(".new-todo");
 
-  const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-  const find = (id) => todos.find((t) => t.id === id);
-  const activeCount = () => todos.filter((t) => !t.completed).length;
-  const visible = () =>
-    todos.filter((t) =>
-      filter === "active" ? !t.completed : filter === "completed" ? t.completed : true,
-    );
-
-  const render = () => {
-    const has = todos.length > 0;
-    main.hidden = !has;
-    footerMount.innerHTML = has
-      ? todoFooter({ active: activeCount(), filter, has_completed: todos.some((t) => t.completed) })
-      : "";
-    toggleAll.checked = has && activeCount() === 0;
-
-    const next = parse(todoList({ todos: visible() }));
-    const current = listMount.querySelector(".todo-list");
-    if (current) {
-      // Morph in place. Items being edited are left untouched, so an in-progress
-      // edit survives a re-render triggered by another todo.
-      morph(current, next, {
-        beforeNodeVisited: (node) => !(node.nodeType === 1 && node.hasAttribute?.("data-editing")),
-      });
-    } else {
-      listMount.replaceChildren(next);
+  const ensureList = () => {
+    let ul = listMount.querySelector(".todo-list");
+    if (!ul) {
+      ul = document.createElement("ul");
+      ul.className = "todo-list";
+      listMount.appendChild(ul);
     }
+    return ul;
   };
 
-  const update = (mutate) => {
-    mutate();
-    save();
+  // Reconcile <li>s by id. Existing items get their attribute updated (which
+  // makes defo call the item's update(todo)); new ones are created; gone ones
+  // are removed. The root never renders item content itself.
+  const reconcile = (todos) => {
+    const ul = ensureList();
+    const present = new Map([...ul.children].map((li) => [li.dataset.id, li]));
+    const wanted = new Set();
+
+    todos.forEach((todo, i) => {
+      const key = String(todo.id);
+      wanted.add(key);
+      let li = present.get(key);
+      // The item's props include whether *this* todo is the one being edited.
+      const props = { ...todo, editing: todo.id === state.editing };
+      const json = JSON.stringify(props);
+      if (!li) {
+        li = parse(todoItem({ todo: props })); // full <li> incl. content + attribute
+      } else if (li.getAttribute("data-defo-todo-item") !== json) {
+        li.setAttribute("data-defo-todo-item", json); // → defo → item.update(props)
+      }
+      if (ul.children[i] !== li) ul.insertBefore(li, ul.children[i] ?? null);
+    });
+
+    [...ul.children].forEach((li) => {
+      if (!wanted.has(li.dataset.id)) li.remove();
+    });
+  };
+
+  const render = () => {
+    const has = state.todos.length > 0;
+    const active = state.todos.filter((t) => !t.completed).length;
+    main.hidden = !has;
+    footerMount.innerHTML = has
+      ? todoFooter({ active, filter: state.filter, has_completed: state.todos.some((t) => t.completed) })
+      : "";
+    toggleAll.checked = has && active === 0;
+    reconcile(visible(state));
+  };
+
+  const dispatch = (action) => {
+    state = reduce(state, action);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.todos));
     render();
   };
 
-  // Intents bubbled up from the item views.
-  const onToggle = (event) =>
-    update(() => {
-      const todo = find(event.detail.id);
-      if (todo) todo.completed = !todo.completed;
-    });
-  const onDestroy = (event) =>
-    update(() => (todos = todos.filter((t) => t.id !== event.detail.id)));
-  const onSave = (event) =>
-    update(() => {
-      const todo = find(event.detail.id);
-      if (todo) todo.title = event.detail.title;
-    });
-
-  // Collection-level controls (the static header/footer elements).
+  const onToggle = (event) => dispatch({ type: "toggle", id: event.detail.id });
+  const onEdit = (event) => dispatch({ type: "edit", id: event.detail.id });
+  const onCancel = (event) => dispatch({ type: "cancel" });
+  const onSave = (event) => {
+    const { id, title } = event.detail;
+    dispatch(title ? { type: "save", id, title } : { type: "destroy", id });
+  };
+  const onDestroy = (event) => dispatch({ type: "destroy", id: event.detail.id });
   const onKeydown = (event) => {
     if (event.target.matches(".new-todo") && event.key === "Enter") {
       const title = event.target.value.trim();
       if (!title) return;
-      update(() => todos.push({ id: nextId++, title, completed: false }));
+      dispatch({ type: "add", title });
       event.target.value = "";
     }
   };
   const onChange = (event) => {
-    if (event.target.matches(".toggle-all")) {
-      const completed = event.target.checked;
-      update(() => todos.forEach((t) => (t.completed = completed)));
-    }
+    if (event.target.matches(".toggle-all")) dispatch({ type: "toggleAll", completed: event.target.checked });
   };
   const onClick = (event) => {
-    if (event.target.matches(".clear-completed")) {
-      update(() => (todos = todos.filter((t) => !t.completed)));
-    }
+    if (event.target.matches(".clear-completed")) dispatch({ type: "clearCompleted" });
   };
-  const onHashchange = () => {
-    filter = filterFromHash();
-    render();
-  };
+  const onHashchange = () => dispatch({ type: "filter", filter: filterFromHash() });
 
   root.addEventListener("todo:toggle", onToggle);
-  root.addEventListener("todo:destroy", onDestroy);
+  root.addEventListener("todo:edit", onEdit);
+  root.addEventListener("todo:cancel", onCancel);
   root.addEventListener("todo:save", onSave);
+  root.addEventListener("todo:destroy", onDestroy);
   root.addEventListener("keydown", onKeydown);
   root.addEventListener("change", onChange);
   root.addEventListener("click", onClick);
@@ -211,8 +268,10 @@ export const todomvcViewFn = (root) => {
   return {
     destroy() {
       root.removeEventListener("todo:toggle", onToggle);
-      root.removeEventListener("todo:destroy", onDestroy);
+      root.removeEventListener("todo:edit", onEdit);
+      root.removeEventListener("todo:cancel", onCancel);
       root.removeEventListener("todo:save", onSave);
+      root.removeEventListener("todo:destroy", onDestroy);
       root.removeEventListener("keydown", onKeydown);
       root.removeEventListener("change", onChange);
       root.removeEventListener("click", onClick);

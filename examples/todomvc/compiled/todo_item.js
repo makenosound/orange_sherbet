@@ -1,4 +1,5 @@
 // AUTO-GENERATED from todo_item.html.erb — do not edit.
+import todo_item_content from "./todo_item_content.js";
 const __esc = (v) =>
   v == null
     ? ""
@@ -15,20 +16,11 @@ export default function todo_item(locals = {}) {
   __o += __esc(todo.id);
   __o += `" data-id="`;
   __o += __esc(todo.id);
-  __o += `" data-defo-todo-item="{}">
-  <div class="view">
-    <input class="toggle" type="checkbox" `;
-  __o += __esc(__truthy(todo.completed) ? "checked" : "");
-  __o += `>
-    <label>`;
-  __o += __esc(todo.title);
-  __o += `</label>
-    <button class="destroy"></button>
-  </div>
-  <input class="edit" value="`;
-  __o += __esc(todo.title);
-  __o += `">
-</li>
+  __o += `" data-defo-todo-item="`;
+  __o += __esc(JSON.stringify(todo));
+  __o += `">`;
+  __o += __s(todo_item_content({ todo: todo }));
+  __o += `</li>
 `;
   return __o;
 }
