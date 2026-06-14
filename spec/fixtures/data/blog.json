@@ -1,0 +1,26 @@
+{
+  "title": "Latest news",
+  "theme": "hanami",
+  "posts": [
+    {
+      "org": "hanami",
+      "title": "Hanami 2.3 & the road ahead",
+      "url_path": "/blog/hanami-2-3",
+      "published_datetime": "2026-05-01T09:00:00Z",
+      "published_date": "1 May 2026",
+      "excerpt": "Views, slices & <new> things.",
+      "html_summary": "<strong>Views</strong> & more.",
+      "featured": true
+    },
+    {
+      "org": null,
+      "title": "Dry-rb tips",
+      "url_path": "/blog/dry-rb-tips",
+      "published_datetime": "2026-04-15T09:00:00Z",
+      "published_date": "15 Apr 2026",
+      "excerpt": "Small, sharp tools.",
+      "html_summary": "Composable <em>operations</em>.",
+      "featured": false
+    }
+  ]
+}

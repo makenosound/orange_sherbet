@@ -1,0 +1,15 @@
+<%- greeting = "hello" -%>
+<%- label = "admin" if is_admin -%>
+<%- base = defined?(extra) ? extra : "none" -%>
+<dl>
+  <dt>assign</dt><dd><%= greeting.upcase %></dd>
+  <dt>guarded</dt><dd><%= label %></dd>
+  <dt>defined?</dt><dd><%= base %></dd>
+  <dt>safe-nav</dt><dd><%= user&.name %></dd>
+  <dt>join/length</dt><dd><%= tags.join(", ") %> (<%= tags.length %>)</dd>
+  <dt>uniq</dt><dd><%= tags.uniq.join("-") %></dd>
+  <dt>first/last</dt><dd><%= tags.first %> / <%= tags.last %></dd>
+  <dt>sum/min/max</dt><dd><%= nums.sum %> <%= nums.min %> <%= nums.max %></dd>
+  <dt>keys</dt><dd><%= opts.keys.join(",") %></dd>
+  <dt>to_json</dt><dd><%= meta.to_json %></dd>
+</dl>

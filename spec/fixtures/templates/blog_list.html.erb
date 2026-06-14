@@ -1,0 +1,13 @@
+<section class="posts theme-<%= theme %>">
+  <h1><%= title.upcase %></h1>
+<%- if posts.any? -%>
+  <p><%= posts.length %> posts</p>
+  <ol>
+<%- posts.each do |post| -%>
+    <li><%= render "post_card", post: post %></li>
+<%- end -%>
+  </ol>
+<%- else -%>
+  <p>No posts yet.</p>
+<%- end -%>
+</section>
