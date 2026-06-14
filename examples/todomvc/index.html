@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orange Sherbet • TodoMVC</title>
+    <link rel="stylesheet" href="https://unpkg.com/todomvc-app-css@2.4.3/index.css" />
+  </head>
+  <body>
+    <section class="todoapp" data-defo-todomvc="{}">
+      <header class="header">
+        <h1>todos</h1>
+        <input class="new-todo" placeholder="What needs to be done?" autofocus />
+      </header>
+
+      <!-- Hidden until there are todos. The list is rendered into .list-mount -->
+      <!-- and the footer into .footer-mount by Orange Sherbet templates. -->
+      <section class="main" hidden>
+        <input id="toggle-all" class="toggle-all" type="checkbox" />
+        <label for="toggle-all">Mark all as complete</label>
+        <div class="list-mount"></div>
+      </section>
+
+      <div class="footer-mount"></div>
+    </section>
+
+    <footer class="info">
+      <p>Double-click to edit a todo</p>
+      <p>
+        Templates rendered with
+        <a href="https://github.com/makenosound/orange_sherbet">Orange Sherbet</a>
+      </p>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

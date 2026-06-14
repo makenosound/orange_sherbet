@@ -1,0 +1,5 @@
+<ul class="todo-list">
+  <%- todos.each do |todo| -%>
+    <%= render "todo_item", todo: todo, editing: editing %>
+  <%- end -%>
+</ul>
