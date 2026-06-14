@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Sherbet::Scanner do
+RSpec.describe OrangeSherbet::Scanner do
   def scan(src) = described_class.scan(src)
 
   it "splits text and tags, carrying the template line" do
@@ -31,6 +31,6 @@ RSpec.describe Sherbet::Scanner do
   end
 
   it "raises on an unterminated tag" do
-    expect { scan("<%= oops") }.to raise_error(Sherbet::Unsupported, /Unterminated/)
+    expect { scan("<%= oops") }.to raise_error(OrangeSherbet::Unsupported, /Unterminated/)
   end
 end

@@ -2,7 +2,7 @@
 
 # Guards the compiler's subset gate and its compile-time lowering decisions.
 # End-to-end output correctness (vs the Renderer) is covered by conformance_spec.
-RSpec.describe Sherbet::Compiler do
+RSpec.describe OrangeSherbet::Compiler do
   # compile returns [js, source_map]; these specs assert on the JS.
   def compile(src) = described_class.compile("t", src).first
 
@@ -53,12 +53,12 @@ RSpec.describe Sherbet::Compiler do
   describe "subset gate" do
     it "rejects statements outside the subset" do
       expect { compile(%(<% content_for :title, "Blog" %>)) }
-        .to raise_error(Sherbet::Unsupported, /Unsupported statement/)
+        .to raise_error(OrangeSherbet::Unsupported, /Unsupported statement/)
     end
 
     it "rejects methods outside the whitelist" do
       expect { compile(%(<%= s.gsub("a", "b") %>)) }
-        .to raise_error(Sherbet::Unsupported, /not in the portable subset/)
+        .to raise_error(OrangeSherbet::Unsupported, /not in the portable subset/)
     end
   end
 end

@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/orange_sherbet"
+require_relative "../lib/orange_sherbet/cli"
+
+exit OrangeSherbet::CLI.start(ARGV)

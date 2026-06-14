@@ -4,13 +4,13 @@ require "erubi"
 require "json"
 require "pathname"
 
-module Sherbet
-  # Server-side renderer — the source of truth that Sherbet's compiled JS is
+module OrangeSherbet
+  # Server-side renderer — the source of truth that OrangeSherbet's compiled JS is
   # held identical to. Runs templates through real Ruby via Erubi (the same
   # engine hanami-view uses) with `escape: true`, so `<%= %>` auto-escapes via
   # Erubi.h — matching the compiled JS's __esc (CGI.escapeHTML) table.
   #
-  #   renderer = Sherbet::Renderer.new("app/templates/portable")
+  #   renderer = OrangeSherbet::Renderer.new("app/templates/portable")
   #   renderer.render("card", post: post)
   class Renderer
     # Wraps a plain hash so `post.title` works as an attribute read and nested

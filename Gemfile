@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in sherbet.gemspec
+# Specify your gem's dependencies in orange_sherbet.gemspec
 gemspec
 
 gem "irb"

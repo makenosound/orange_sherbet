@@ -3,7 +3,7 @@
 require "tmpdir"
 require "open3"
 
-# The cross-language guarantee: a template rendered by Sherbet::Renderer (real
+# The cross-language guarantee: a template rendered by OrangeSherbet::Renderer (real
 # Ruby via Erubi) and by the compiled JS (run in Node) must produce identical
 # output. The Renderer is the source of truth; the compiler is held to it.
 #
@@ -20,7 +20,7 @@ RSpec.describe "cross-language conformance" do
   [["blog_list", "blog.json"], ["features", "features.json"]].each do |name, data_file|
     it "renders #{name} identically in Ruby and JS" do
       data = JSON.parse(File.read(File.join(data_dir, data_file)))
-      ruby_out = Sherbet::Renderer.new(templates_dir).render(name, data)
+      ruby_out = OrangeSherbet::Renderer.new(templates_dir).render(name, data)
       js_out = render_with_node(name, data)
 
       expect(js_out).to eq(ruby_out)
@@ -33,7 +33,7 @@ RSpec.describe "cross-language conformance" do
     Dir.mktmpdir do |dir|
       Dir.glob(File.join(templates_dir, "*.html.erb")).each do |path|
         name = File.basename(path, ".html.erb")
-        js, = Sherbet::Compiler.compile(name, File.read(path))
+        js, = OrangeSherbet::Compiler.compile(name, File.read(path))
         File.write(File.join(dir, "#{name}.js"), js)
       end
       File.write(File.join(dir, "data.json"), JSON.generate(data))

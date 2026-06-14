@@ -3,12 +3,12 @@
 # Direct tests for the JS backend (AST constructors + Printer), independent of
 # any Ruby/ERB lowering. These pin down the two things the printer owns:
 # precedence-driven parenthesisation and string/template escaping.
-RSpec.describe Sherbet::Js do
-  include Sherbet::Js
+RSpec.describe OrangeSherbet::Js do
+  include OrangeSherbet::Js
 
   # Render an expression through the real statement path and return the JS.
   def render(expr)
-    printer = Sherbet::Js::Printer.new
+    printer = OrangeSherbet::Js::Printer.new
     printer.stmt({type: :append, expr: expr, line: nil}, 0)
     printer.output.sub(/\A__o \+= /, "").sub(/;\n\z/, "")
   end
@@ -49,7 +49,7 @@ RSpec.describe Sherbet::Js do
 
   describe "source map" do
     it "produces a valid v3 map with embedded source" do
-      printer = Sherbet::Js::Printer.new
+      printer = OrangeSherbet::Js::Printer.new
       printer.line("line one")
       printer.stmt({type: :append, expr: j_ident("x"), line: 3}, 0)
       map = JSON.parse(printer.source_map("t.html.erb", "<erb source>"))

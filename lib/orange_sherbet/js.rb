@@ -2,11 +2,11 @@
 
 require "json"
 
-module Sherbet
+module OrangeSherbet
   # The JS backend: AST node constructors (`j_*`) plus a Printer that renders an
   # AST to JS source and a v3 source map. This layer knows nothing about Ruby or
   # ERB — given an AST, it produces target code. The Ruby→JS lowering lives in
-  # Sherbet::Compiler and consumes this.
+  # OrangeSherbet::Compiler and consumes this.
   #
   # `include Js` makes the `j_*` constructors available as private helpers.
   module Js

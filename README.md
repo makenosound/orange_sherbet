@@ -1,8 +1,8 @@
-# Sherbet
+# Orange Sherbet
 
 *Write your template once in ERB; render it on the server and in the browser.*
 
-Sherbet compiles ERB templates — written in a small, portable subset of Ruby —
+Orange Sherbet compiles ERB templates — written in a small, portable subset of Ruby —
 into self-contained JavaScript modules. The same `.html.erb` renders on the
 server (real Ruby via Erubi) and re-renders in the browser from the compiled JS,
 with identical output by construction.
@@ -15,7 +15,7 @@ the `.html.erb`.
 ```
 .html.erb ──▶ Scanner (ERB + Erubi trim) ──▶ Compiler (Prism → JS AST) ──▶ Printer ──▶ .js + .js.map
                                                                               │
-server: Sherbet::Renderer (Erubi) ──────────────────── identical output ─────┘
+server: OrangeSherbet::Renderer (Erubi) ──────────────────── identical output ─────┘
 ```
 
 ## Why
@@ -30,20 +30,20 @@ parser in the bundle.
 ## Usage
 
 ```ruby
-js, source_map = Sherbet.compile("card", File.read("card.html.erb"))
+js, source_map = OrangeSherbet.compile("card", File.read("card.html.erb"))
 ```
 
 Render the same template on the server:
 
 ```ruby
-renderer = Sherbet::Renderer.new("app/templates/portable")
+renderer = OrangeSherbet::Renderer.new("app/templates/portable")
 renderer.render("card", post: post) # => HTML string, identical to the compiled JS
 ```
 
 Compile a directory as a build step:
 
 ```bash
-sherbet compile app/templates/portable app/assets/js/templates
+orange_sherbet compile app/templates/portable app/assets/js/templates
 # → app/assets/js/templates/<name>.js (+ .js.map) per template
 ```
 
@@ -64,7 +64,7 @@ navigation (`&.`), `render` partials, and a whitelist of value methods
 `sum`, `to_json`, …).
 
 Anything outside the subset — `gsub`/regex, `rand`, arbitrary method calls,
-blocks other than `each` — raises `Sherbet::Unsupported` at compile time rather
+blocks other than `each` — raises `OrangeSherbet::Unsupported` at compile time rather
 than miscompiling. Method names shared across types (`length`, `empty?`,
 `include?`) resolve to the string/array reading; Hash uses explicit
 `keys`/`values`.

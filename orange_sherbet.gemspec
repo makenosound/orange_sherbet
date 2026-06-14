@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
-require_relative "lib/sherbet/version"
+require_relative "lib/orange_sherbet/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "sherbet"
-  spec.version = Sherbet::VERSION
+  spec.name = "orange_sherbet"
+  spec.version = OrangeSherbet::VERSION
   spec.authors = ["Max Wheeler"]
   spec.email = ["max@makenosound.com"]
 
   spec.summary = "Compile a portable subset of ERB to standalone JavaScript."
   spec.description = <<~DESC
-    Sherbet compiles ERB templates — written in a small, portable subset of
+    Orange Sherbet compiles ERB templates — written in a small, portable subset of
     Ruby — into self-contained JavaScript modules, so the same template renders
     on the server (real Ruby via Erubi) and re-renders in the browser. It parses
     the Ruby inside tags with Prism and emits JS through an AST + printer, with
     a source map back to the .html.erb.
   DESC
-  spec.homepage = "https://github.com/makenosound/sherbet"
+  spec.homepage = "https://github.com/makenosound/orange_sherbet"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"
 

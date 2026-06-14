@@ -3,8 +3,8 @@
 require "pathname"
 require_relative "compiler"
 
-module Sherbet
-  # `sherbet compile SRC_DIR OUT_DIR`
+module OrangeSherbet
+  # `orange_sherbet compile SRC_DIR OUT_DIR`
   #
   # Compiles every SRC_DIR/*.html.erb to OUT_DIR/<name>.js (+ .js.map). Intended
   # as a build step; re-run when a template changes.
@@ -17,7 +17,7 @@ module Sherbet
       when "compile" then compile(*rest)
       when nil, "-h", "--help", "help" then usage($stdout) || 0
       else
-        warn "sherbet: unknown command #{command.inspect}"
+        warn "orange_sherbet: unknown command #{command.inspect}"
         usage($stderr)
         1
       end
@@ -36,7 +36,7 @@ module Sherbet
       count = 0
       src.glob("*.html.erb").sort.each do |path|
         name = path.basename(".html.erb").to_s
-        js, map = Sherbet::Compiler.compile(name, path.read)
+        js, map = OrangeSherbet::Compiler.compile(name, path.read)
         out.join("#{name}.js").write(js)
         out.join("#{name}.js.map").write(map)
         count += 1
@@ -48,7 +48,7 @@ module Sherbet
 
     def usage(io)
       io.puts <<~TXT
-        Usage: sherbet compile SRC_DIR OUT_DIR
+        Usage: orange_sherbet compile SRC_DIR OUT_DIR
 
         Compiles SRC_DIR/*.html.erb to OUT_DIR/<name>.js (+ source maps).
       TXT

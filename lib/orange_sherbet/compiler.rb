@@ -4,7 +4,7 @@ require "prism"
 require_relative "scanner"
 require_relative "js"
 
-module Sherbet
+module OrangeSherbet
   # Compiles a portable .html.erb template to a self-contained JS module.
   #
   # The pipeline: Scanner splits the template into segments (+ Erubi trim), this

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Sherbet
+module OrangeSherbet
   # Splits an ERB template into raw segments, applying Erubi's `trim: true`
   # whitespace rules. Each segment carries the template line it starts on:
   #   [:text, string, line]
