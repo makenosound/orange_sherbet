@@ -1,1 +1,1 @@
-<li class="<%= todo.completed ? "completed" : "" %>" id="todo-<%= todo.id %>" data-id="<%= todo.id %>" data-defo-todo-item="<%= todo.to_json %>"><%= render "todo_item_content", todo: todo %></li>
+<li class="<%= todo.completed ? "completed" : "" %><%= todo.editing ? " editing" : "" %>" data-id="<%= todo.id %>" data-defo-todo-item="<%= todo.to_json %>"><%= render "todo_item_content", todo: todo %></li>

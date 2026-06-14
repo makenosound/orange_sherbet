@@ -2,10 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { reduce, todomvcViewFn, todoItemViewFn } from "./todomvc.js";
 import todoItem from "./compiled/todo_item.js";
 
-// Three independently testable parts: reduce (pure, now including edit mode),
-// the root (owns state, reconciles the list by writing each <li>'s
-// data-defo-todo-item attribute), and the item (renders its own content +
-// editing state from that attribute via update, and emits intents up).
+// reduce is pure; the root renders the whole list and morphs it (so its DOM
+// updates are synchronous and assertable here); the item handles behaviour and
+// focus. In the browser defo binds the item views to the <li>s morph creates.
 
 const parse = (html) => {
   const t = document.createElement("template");
@@ -14,7 +13,7 @@ const parse = (html) => {
 };
 const key = (el, k) => el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
 const items = (root) => [...root.querySelectorAll(".todo-list li")];
-const todoOf = (li) => JSON.parse(li.getAttribute("data-defo-todo-item"));
+const byId = (root, id) => root.querySelector(`li[data-id="${id}"]`);
 const count = (root) => root.querySelector(".todo-count")?.textContent.replace(/\s+/g, " ").trim();
 const intent = (li, type, detail) =>
   li.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
@@ -32,10 +31,9 @@ describe("reduce (pure state transitions)", () => {
   it("toggles all", () => expect(reduce(base, { type: "toggleAll", completed: true }).todos.every((t) => t.completed)).toBe(true));
   it("clears completed", () => expect(reduce(base, { type: "clearCompleted" }).todos.map((t) => t.id)).toEqual([1]));
   it("sets the filter", () => expect(reduce(base, { type: "filter", filter: "active" }).filter).toBe("active"));
-
   it("starts editing", () => expect(reduce(base, { type: "edit", id: 1 }).editing).toBe(1));
   it("cancels editing", () => expect(reduce({ ...base, editing: 1 }, { type: "cancel" }).editing).toBeNull());
-  it("saves the title and clears editing", () => {
+  it("saves and clears editing", () => {
     const next = reduce({ ...base, editing: 1 }, { type: "save", id: 1, title: "x" });
     expect(next.todos[0].title).toBe("x");
     expect(next.editing).toBeNull();
@@ -51,7 +49,7 @@ describe("reduce (pure state transitions)", () => {
   });
 });
 
-describe("todomvcViewFn (state + list reconciliation)", () => {
+describe("todomvcViewFn (renders + morphs the list)", () => {
   const shell = () => {
     document.body.innerHTML = `
       <section class="todoapp" data-defo-todomvc="{}">
@@ -66,7 +64,6 @@ describe("todomvcViewFn (state + list reconciliation)", () => {
     todomvcViewFn(root);
     return root;
   };
-  const byId = (root, id) => root.querySelector(`li[data-id="${id}"]`);
 
   beforeEach(() => {
     localStorage.clear();
@@ -74,34 +71,42 @@ describe("todomvcViewFn (state + list reconciliation)", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders each todo as an <li> carrying its state (incl. editing) in the attribute", () => {
+  it("renders the seeded todos with content and the active count", () => {
     const root = shell();
     expect(items(root).length).toBe(2);
-    expect(todoOf(items(root)[0])).toMatchObject({ id: 1, completed: true, editing: false });
+    expect(byId(root, 1).querySelector("label").textContent).toBe("Taste the orange sherbet");
+    expect(byId(root, 1).classList.contains("completed")).toBe(true);
     expect(count(root)).toContain("1 item left");
   });
 
-  it("updates the item's attribute when a toggle intent bubbles up", () => {
+  it("re-renders an item on a toggle intent (via morph)", () => {
     const root = shell();
     intent(byId(root, 2), "todo:toggle", { id: 2 });
-    expect(todoOf(byId(root, 2)).completed).toBe(true);
+    expect(byId(root, 2).classList.contains("completed")).toBe(true);
+    expect(byId(root, 2).querySelector(".toggle").checked).toBe(true);
     expect(count(root)).toContain("0 items left");
   });
 
-  it("marks an item editing, then saves and clears it", () => {
+  it("marks editing, then saves the new title and clears editing", () => {
     const root = shell();
     intent(byId(root, 1), "todo:edit", { id: 1 });
-    expect(todoOf(byId(root, 1)).editing).toBe(true);
+    expect(byId(root, 1).classList.contains("editing")).toBe(true);
 
     intent(byId(root, 1), "todo:save", { id: 1, title: "Renamed" });
-    expect(todoOf(byId(root, 1))).toMatchObject({ title: "Renamed", editing: false });
+    expect(byId(root, 1).querySelector("label").textContent).toBe("Renamed");
+    expect(byId(root, 1).classList.contains("editing")).toBe(false);
   });
 
-  it("cancels editing without changing the title", () => {
+  it("preserves an in-progress edit when another todo changes (morph skip)", () => {
     const root = shell();
     intent(byId(root, 1), "todo:edit", { id: 1 });
-    intent(byId(root, 1), "todo:cancel", { id: 1 });
-    expect(todoOf(byId(root, 1)).editing).toBe(false);
+    byId(root, 1).querySelector(".edit").value = "half-typed";
+
+    intent(byId(root, 2), "todo:toggle", { id: 2 });
+
+    expect(byId(root, 1).classList.contains("editing")).toBe(true);
+    expect(byId(root, 1).querySelector(".edit").value).toBe("half-typed");
+    expect(byId(root, 2).classList.contains("completed")).toBe(true);
   });
 
   it("adds and removes <li>s and filters via the hash", () => {
@@ -110,34 +115,35 @@ describe("todomvcViewFn (state + list reconciliation)", () => {
     input.value = "Write a test";
     key(input, "Enter");
     expect(items(root).length).toBe(3);
+    expect(byId(root, 3).querySelector("label").textContent).toBe("Write a test");
 
     intent(byId(root, 1), "todo:destroy", { id: 1 });
     expect(byId(root, 1)).toBeNull();
 
     location.hash = "#/completed";
     window.dispatchEvent(new Event("hashchange"));
-    expect(items(root).every((li) => todoOf(li).completed)).toBe(true);
+    expect(items(root).every((li) => li.classList.contains("completed"))).toBe(true);
   });
 });
 
-describe("todoItemViewFn (renders content + editing from props; emits intents)", () => {
+describe("todoItemViewFn (behaviour + focus)", () => {
   let li, api, events;
 
-  const mountItem = (todo) => {
-    li = parse(todoItem({ todo: { ...todo, editing: false } }));
+  const mountItem = (todo, editing = false) => {
+    li = parse(todoItem({ todo: { ...todo, editing } }));
     document.body.appendChild(li);
     events = [];
     ["todo:toggle", "todo:destroy", "todo:edit", "todo:save", "todo:cancel"].forEach((type) =>
       li.addEventListener(type, (e) => events.push([type, e.detail])),
     );
-    api = todoItemViewFn(li, { ...todo, editing: false });
+    api = todoItemViewFn(li, { ...todo, editing });
   };
 
   beforeEach(() => {
     document.body.innerHTML = "";
   });
 
-  it("emits todo:toggle / todo:edit from the DOM", () => {
+  it("emits intents from DOM interactions", () => {
     mountItem({ id: 7, title: "Walk the dog", completed: false });
     li.querySelector(".toggle").dispatchEvent(new Event("change", { bubbles: true }));
     li.querySelector("label").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
@@ -145,7 +151,7 @@ describe("todoItemViewFn (renders content + editing from props; emits intents)",
   });
 
   it("emits todo:save on Enter and todo:cancel on Escape", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false });
+    mountItem({ id: 7, title: "Walk the dog", completed: false }, true);
     const edit = li.querySelector(".edit");
     edit.value = "Walk the cat";
     key(edit, "Enter");
@@ -153,28 +159,15 @@ describe("todoItemViewFn (renders content + editing from props; emits intents)",
     expect(events).toEqual([["todo:save", { id: 7, title: "Walk the cat" }], ["todo:cancel", { id: 7 }]]);
   });
 
-  it("enters edit mode (class + focus) when props.editing flips true", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false });
+  it("focuses the field when its props say it's editing", () => {
+    mountItem({ id: 7, title: "Walk the dog", completed: false }, true);
     api.update({ id: 7, title: "Walk the dog", completed: false, editing: true });
-    expect(li.classList.contains("editing")).toBe(true);
-    expect(li.querySelector(".edit").value).toBe("Walk the dog");
     expect(document.activeElement).toBe(li.querySelector(".edit"));
   });
 
-  it("does not reset the field on a repeat editing update", () => {
+  it("does nothing on update when not editing", () => {
     mountItem({ id: 7, title: "Walk the dog", completed: false });
-    api.update({ id: 7, title: "Walk the dog", completed: false, editing: true });
-    li.querySelector(".edit").value = "half-typed";
-    api.update({ id: 7, title: "Walk the dog", completed: false, editing: true });
-    expect(li.querySelector(".edit").value).toBe("half-typed");
-  });
-
-  it("exits edit and re-renders content when editing flips false", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false });
-    api.update({ id: 7, title: "Walk the dog", completed: false, editing: true });
-    api.update({ id: 7, title: "Walk the cat", completed: true, editing: false });
-    expect(li.classList.contains("editing")).toBe(false);
-    expect(li.querySelector("label").textContent).toBe("Walk the cat");
-    expect(li.classList.contains("completed")).toBe(true);
+    api.update({ id: 7, title: "Walk the dog", completed: false, editing: false });
+    expect(document.activeElement).not.toBe(li.querySelector(".edit"));
   });
 });

@@ -6,7 +6,7 @@ enters the DOM, and [Orange Sherbet](https://github.com/makenosound/orange_sherb
 compiles the ERB templates to the JS render functions the views import.
 
 There is no bundler — the compiled templates are plain ES modules, and `defo`
-loads from a CDN via the import map in `index.html`.
+and `morphlex` load from a CDN via the import map in `index.html`.
 
 ```
 templates/*.html.erb ──orange_sherbet──▶ compiled/*.js ──imported by──▶ todomvc.js (defo viewFns)
@@ -14,30 +14,24 @@ templates/*.html.erb ──orange_sherbet──▶ compiled/*.js ──imported 
 
 ## What it shows
 
-- **Each item is a defo component, rendered via `update`.** Every `<li>` carries
-  its todo as a `data-defo-todo-item` JSON attribute — that's its props. defo
-  calls the item's `update(todo)` whenever the attribute changes, and the item
-  re-renders its *own* content (Orange Sherbet's `todo_item_content`). So a
-  toggle re-renders only that one item, through defo's update mechanism:
-
-  ```
-  reduce ─▶ root sets the <li>'s data-defo-todo-item ─▶ defo ─▶ item.update(todo)
-  ```
-
-- **The root owns state and reconciles the list.** `todomvcViewFn` holds the
-  todos + filter in a closure and a pure `reduce`. It receives bubbling intents
-  (`todo:toggle` / `todo:save` / `todo:destroy`) — the main reducer is
-  event-driven, not attribute-driven — and on each change reconciles the `<ul>`
-  by id: it sets each existing `<li>`'s attribute (→ that item updates), creates
-  `<li>`s for new todos, and removes them for gone ones. defo binds/destroys an
-  item view per `<li>` as it enters/leaves.
-- **Items hold no state — even edit mode.** Props flow down via the attribute
-  (`update`), intents flow up via events. `editing` is part of the reducer
-  state: double-click emits `todo:edit`, the reducer records which todo is being
-  edited, and that flows back to the item as `editing: true` in its props.
-  `update` focuses the field on the false→true transition only, so an unrelated
-  re-render never resets an in-progress edit. Enter emits `todo:save`, Escape
-  `todo:cancel`.
+- **The root renders the whole list; morphlex reconciles it.** `todomvcViewFn`
+  holds the todos + filter in a closure with a pure `reduce`, and on each change
+  renders the entire `<ul>` from the templates and
+  [morphs](https://github.com/yippee-fun/morphlex) it onto the live list — so the
+  root doesn't own any keyed add/remove/reorder logic, morphlex does. A todo
+  being edited is skipped by the morph (`beforeNodeVisited`, when it's editing in
+  both the old and new render), so an in-progress edit survives an unrelated
+  change.
+- **defo owns the item views.** As morph adds/removes `<li>`s, defo binds a
+  `todoItem` view to each one and runs `destroy` for each that leaves. The item
+  owns one todo's behaviour — toggle / destroy / double-click-to-edit — and
+  emits bubbling intents (`todo:toggle` / `todo:save` / `todo:destroy`) the root
+  reduces. The main reducer is event-driven, not attribute-driven.
+- **Edit mode is state, rendered by morph, focused by defo.** `editing` (the id
+  being edited) lives in the reducer state. The template renders the `editing`
+  class from it, so morph shows the edit field; the only thing morph can't do is
+  focus, so the item's `update` does just that when its props say it's editing.
+  Enter emits `todo:save`, Escape `todo:cancel`.
 - **Ruby compiles to inline JS.** `todo.completed ? "completed" : ""`,
   `todo.to_json` (→ `JSON.stringify`), attribute reads, `each`, conditionals —
   and `render "todo_item_content"` becomes a JS `import` in the compiled output.

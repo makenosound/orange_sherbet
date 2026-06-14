@@ -1,24 +1,24 @@
-// TodoMVC with defo's update() driving the individual todo items.
+// TodoMVC: the root renders the whole list and morphs it; defo + morphlex own
+// the DOM reconciliation; edit mode lives in the reducer state.
 //
-//   todomvcViewFn  the root. Owns state (a closure) and the reducer. Items and
-//                  controls talk to it with bubbling intents (the main reducer
-//                  is event-driven, not attribute-driven). On a change it
-//                  reconciles the <ul>: it sets each <li>'s data-defo-todo-item
-//                  attribute to that todo's JSON, adds <li>s for new todos, and
-//                  removes them for gone ones.
+//   todomvcViewFn  the root. Owns state (a closure) + a pure reduce. Takes
+//                  bubbling intents (the main reducer is event-driven), renders
+//                  the full <ul> from the templates, and morphs it onto the live
+//                  list — morphlex handles add/remove/reorder/attribute updates,
+//                  and skips a todo that's being edited so the in-progress edit
+//                  survives an unrelated re-render.
 //
-//   todoItemViewFn defo binds it to each <li>. The <li>'s data-defo-todo-item
-//                  attribute is the item's props; defo calls the item's
-//                  update(todo) whenever that attribute changes, and the item
-//                  re-renders its own content from it (Orange Sherbet's
-//                  todo_item_content). It emits intents up and owns edit mode.
+//   todoItemViewFn defo binds it to each <li> as morph adds them. It owns one
+//                  todo's behaviour (toggle / destroy / edit) — emitting intents
+//                  up — and focuses the field when its props say it's editing.
+//                  It holds no state and renders no content (morph does that).
 //
-//   reduce         pure state transitions (no DOM)
+//   reduce         pure state transitions, including edit mode.
 //
-// @icelab/defo resolves via the import map in index.html (and node_modules
-// under test).
-import todoItem from "./compiled/todo_item.js";
-import todoItemContent from "./compiled/todo_item_content.js";
+// @icelab/defo and morphlex resolve via the import map in index.html (and
+// node_modules under test).
+import { morph } from "morphlex";
+import todoList from "./compiled/todo_list.js";
 import todoFooter from "./compiled/todo_footer.js";
 
 const STORAGE_KEY = "orange-sherbet-todomvc";
@@ -53,6 +53,8 @@ const parse = (html) => {
   template.innerHTML = html.trim();
   return template.content.firstElementChild;
 };
+
+const isEditing = (node) => node.nodeType === 1 && node.classList.contains("editing");
 
 // --- pure state transitions ------------------------------------------------
 
@@ -95,14 +97,13 @@ export const reduce = (state, action) => {
   }
 };
 
-// --- per-item view: props in via the attribute, intents out via events -----
+// --- per-item view: behaviour + focus, no content --------------------------
 
 export const todoItemViewFn = (li, props) => {
   const id = props.id;
   const emit = (type, detail) => li.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
   const editValue = () => li.querySelector(".edit").value.trim();
 
-  // All interactions are intents — edit mode is state, owned by the reducer.
   const onChange = (event) => {
     if (event.target.matches(".toggle")) emit("todo:toggle", { id });
   };
@@ -118,14 +119,13 @@ export const todoItemViewFn = (li, props) => {
     else if (event.key === "Escape") emit("todo:cancel", { id });
   };
   const onBlur = (event) => {
-    // Only commit if still editing — the state-driven exit removes the .editing
-    // class before the input is replaced, so this won't double-fire after Enter.
+    // Commit on blur, but not the blur caused by morph removing the field on
+    // exit — by then the .editing class is gone.
     if (event.target.matches(".edit") && li.classList.contains("editing")) {
       emit("todo:save", { id, title: editValue() });
     }
   };
 
-  // Listeners live on the <li>, so they survive the content being re-rendered.
   li.addEventListener("change", onChange);
   li.addEventListener("click", onClick);
   li.addEventListener("dblclick", onDblclick);
@@ -133,23 +133,14 @@ export const todoItemViewFn = (li, props) => {
   li.addEventListener("blur", onBlur, true);
 
   return {
-    // defo calls this when data-defo-todo-item changes. The item reflects its
-    // props, including `editing`: entering edit focuses the field; otherwise it
-    // re-renders its content. Entering only fires on the false→true transition,
-    // so an in-progress edit isn't reset by an unrelated re-render.
+    // morph renders the content; defo calls this when the attribute changes.
+    // The only thing morph can't do is focus, so that's all the item does.
     update(todo) {
-      li.classList.toggle("completed", todo.completed);
-      if (todo.editing) {
-        if (!li.classList.contains("editing")) {
-          li.classList.add("editing");
-          const edit = li.querySelector(".edit");
-          edit.value = todo.title;
-          edit.focus();
-          edit.setSelectionRange(edit.value.length, edit.value.length);
-        }
-      } else {
-        li.classList.remove("editing");
-        li.innerHTML = todoItemContent({ todo });
+      if (!todo.editing) return;
+      const edit = li.querySelector(".edit");
+      if (edit && document.activeElement !== edit) {
+        edit.focus();
+        edit.setSelectionRange(edit.value.length, edit.value.length);
       }
     },
     destroy() {
@@ -162,7 +153,7 @@ export const todoItemViewFn = (li, props) => {
   };
 };
 
-// --- root view: state + reducer + list reconciliation ----------------------
+// --- root view: state + reducer + morph ------------------------------------
 
 export const todomvcViewFn = (root) => {
   let state = { todos: loadTodos(), filter: filterFromHash(), editing: null };
@@ -183,34 +174,6 @@ export const todomvcViewFn = (root) => {
     return ul;
   };
 
-  // Reconcile <li>s by id. Existing items get their attribute updated (which
-  // makes defo call the item's update(todo)); new ones are created; gone ones
-  // are removed. The root never renders item content itself.
-  const reconcile = (todos) => {
-    const ul = ensureList();
-    const present = new Map([...ul.children].map((li) => [li.dataset.id, li]));
-    const wanted = new Set();
-
-    todos.forEach((todo, i) => {
-      const key = String(todo.id);
-      wanted.add(key);
-      let li = present.get(key);
-      // The item's props include whether *this* todo is the one being edited.
-      const props = { ...todo, editing: todo.id === state.editing };
-      const json = JSON.stringify(props);
-      if (!li) {
-        li = parse(todoItem({ todo: props })); // full <li> incl. content + attribute
-      } else if (li.getAttribute("data-defo-todo-item") !== json) {
-        li.setAttribute("data-defo-todo-item", json); // → defo → item.update(props)
-      }
-      if (ul.children[i] !== li) ul.insertBefore(li, ul.children[i] ?? null);
-    });
-
-    [...ul.children].forEach((li) => {
-      if (!wanted.has(li.dataset.id)) li.remove();
-    });
-  };
-
   const render = () => {
     const has = state.todos.length > 0;
     const active = state.todos.filter((t) => !t.completed).length;
@@ -219,7 +182,14 @@ export const todomvcViewFn = (root) => {
       ? todoFooter({ active, filter: state.filter, has_completed: state.todos.some((t) => t.completed) })
       : "";
     toggleAll.checked = has && active === 0;
-    reconcile(visible(state));
+
+    // Render the whole list and let morphlex reconcile it. Each todo's props —
+    // including whether it's the one being edited — go into the <li>'s attribute,
+    // and defo binds/updates the item views as nodes enter/change.
+    const todos = visible(state).map((t) => ({ ...t, editing: t.id === state.editing }));
+    morph(ensureList(), parse(todoList({ todos })), {
+      beforeNodeVisited: (from, to) => !(isEditing(from) && isEditing(to)),
+    });
   };
 
   const dispatch = (action) => {
@@ -230,7 +200,7 @@ export const todomvcViewFn = (root) => {
 
   const onToggle = (event) => dispatch({ type: "toggle", id: event.detail.id });
   const onEdit = (event) => dispatch({ type: "edit", id: event.detail.id });
-  const onCancel = (event) => dispatch({ type: "cancel" });
+  const onCancel = () => dispatch({ type: "cancel" });
   const onSave = (event) => {
     const { id, title } = event.detail;
     dispatch(title ? { type: "save", id, title } : { type: "destroy", id });

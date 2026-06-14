@@ -12,8 +12,7 @@ export default function todo_item(locals = {}) {
   let __o = "";
   __o += `<li class="`;
   __o += __esc(__truthy(todo.completed) ? "completed" : "");
-  __o += `" id="todo-`;
-  __o += __esc(todo.id);
+  __o += __esc(__truthy(todo.editing) ? " editing" : "");
   __o += `" data-id="`;
   __o += __esc(todo.id);
   __o += `" data-defo-todo-item="`;
