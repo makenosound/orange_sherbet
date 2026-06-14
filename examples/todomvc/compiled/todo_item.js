@@ -7,14 +7,15 @@ const __s = (v) => (v == null ? "" : String(v));
 const __truthy = (v) => v != null && v !== false;
 
 export default function todo_item(locals = {}) {
-  const { editing, todo } = locals;
+  const { todo } = locals;
   let __o = "";
   __o += `<li class="`;
   __o += __esc(__truthy(todo.completed) ? "completed" : "");
-  __o += __esc(__truthy(todo.id === editing) ? " editing" : "");
+  __o += `" id="todo-`;
+  __o += __esc(todo.id);
   __o += `" data-id="`;
   __o += __esc(todo.id);
-  __o += `">
+  __o += `" data-defo-todo-item="{}">
   <div class="view">
     <input class="toggle" type="checkbox" `;
   __o += __esc(__truthy(todo.completed) ? "checked" : "");

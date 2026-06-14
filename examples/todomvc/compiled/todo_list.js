@@ -8,13 +8,13 @@ const __s = (v) => (v == null ? "" : String(v));
 const __truthy = (v) => v != null && v !== false;
 
 export default function todo_list(locals = {}) {
-  const { editing, todos } = locals;
+  const { todos } = locals;
   let __o = "";
   __o += `<ul class="todo-list">
 `;
   todos.forEach((todo) => {
     __o += `    `;
-    __o += __s(todo_item({ todo: todo, editing: editing }));
+    __o += __s(todo_item({ todo: todo }));
     __o += `
 `;
   });

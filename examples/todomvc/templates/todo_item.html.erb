@@ -1,4 +1,4 @@
-<li class="<%= todo.completed ? "completed" : "" %><%= todo.id == editing ? " editing" : "" %>" data-id="<%= todo.id %>">
+<li class="<%= todo.completed ? "completed" : "" %>" id="todo-<%= todo.id %>" data-id="<%= todo.id %>" data-defo-todo-item="{}">
   <div class="view">
     <input class="toggle" type="checkbox" <%= todo.completed ? "checked" : "" %>>
     <label><%= todo.title %></label>

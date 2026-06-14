@@ -1,27 +1,35 @@
 # TodoMVC with Orange Sherbet
 
-A standalone [TodoMVC](https://todomvc.com) built the way this repo's `/todos`
-page works: [defo](https://github.com/icelab/defo) binds a view function to the
-root node, and [Orange Sherbet](https://github.com/makenosound/orange_sherbet)
-compiles the ERB templates to the JS render functions the view imports.
+A standalone [TodoMVC](https://todomvc.com) built the way this approach intends:
+[defo](https://github.com/icelab/defo) binds a view function to every node that
+enters the DOM, and [Orange Sherbet](https://github.com/makenosound/orange_sherbet)
+compiles the ERB templates to the JS render functions the views import.
 
-There is no bundler. The compiled templates are plain ES modules, defo loads from
-a CDN, and `todomvc.js` runs directly in the browser.
+There is no bundler — the compiled templates are plain ES modules, and `defo` and
+`morphlex` load from a CDN via the import map in `index.html`.
 
 ```
-templates/*.html.erb  ──orange_sherbet──▶  compiled/*.js  ──imported by──▶  todomvc.js (defo viewFn)
+templates/*.html.erb ──orange_sherbet──▶ compiled/*.js ──imported by──▶ todomvc.js (defo viewFns)
 ```
 
 ## What it shows
 
-- One ERB template (`todo_list`) renders a partial (`todo_item`) — the `render`
-  call becomes a normal JS `import` in the compiled output.
-- Ruby in the templates compiles to inline JS: `todo.completed ? "completed" : ""`,
-  `active == 1 ? "item" : "items"`, attribute reads, `each`, conditionals.
-- The viewFn holds state (todos, filter, editing) and re-renders the list and
-  footer from the compiled templates on every change — add, toggle, edit
-  (double-click), delete, toggle-all, clear-completed, filters (`#/active`,
-  `#/completed`), and localStorage persistence.
+- **Two view functions, narrow responsibilities.** `todomvc` (the root) owns the
+  todos, filter, and persistence. `todoItem` is bound by defo to each `<li>` and
+  owns one todo's interaction (toggle, destroy, double-click to edit) — it holds
+  no state, just reads its id from the node and dispatches intents
+  (`todo:toggle` / `todo:save` / `todo:destroy`) that bubble up to the root.
+- **defo binds new nodes automatically.** As the list changes, defo binds
+  `todoItem` to each `<li>` that enters the DOM and runs its `destroy` for each
+  that leaves — no manual wiring.
+- **Morphing, not innerHTML.** The root renders with Orange Sherbet and uses
+  [morphlex](https://github.com/yippee-fun/morphlex) to patch the list in place,
+  so defo only binds/destroys the items that actually changed, and a todo being
+  edited (`data-editing`) is skipped by the morph so an in-progress edit survives
+  a re-render triggered by another todo.
+- **Ruby compiles to inline JS.** `todo.completed ? "completed" : ""`,
+  `active == 1 ? "item" : "items"`, attribute reads, `each`, conditionals — and
+  `render "todo_item"` becomes a JS `import` in the compiled output.
 
 ## Build
 
@@ -43,4 +51,15 @@ ES module imports need to be served over HTTP (not `file://`):
 cd examples/todomvc
 python3 -m http.server 8000
 # open http://localhost:8000
+```
+
+## Test
+
+The view functions have a small happy-dom test suite (the item view and the root
+view are driven independently):
+
+```bash
+cd examples/todomvc
+npm install
+npm test
 ```

@@ -1,0 +1,13 @@
+{
+  "name": "orange-sherbet-todomvc-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.10.3",
+    "morphlex": "^1.4.0",
+    "vitest": "^4.1.8"
+  }
+}
