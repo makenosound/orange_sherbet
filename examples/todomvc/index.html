@@ -7,16 +7,16 @@
     <link rel="stylesheet" href="https://unpkg.com/todomvc-app-css@2.4.3/index.css" />
   </head>
   <body>
-    <section class="todoapp" data-defo-todomvc="{}">
+    <section class="todoapp" data-defo-app="{}">
       <header class="header">
         <h1>todos</h1>
-        <input class="new-todo" placeholder="What needs to be done?" autofocus />
+        <input class="new-todo" placeholder="What needs to be done?" autofocus data-defo-new-todo="{}" />
       </header>
 
       <!-- Hidden until there are todos. The list is rendered into .list-mount -->
       <!-- and the footer into .footer-mount by Orange Sherbet templates. -->
       <section class="main" hidden>
-        <input id="toggle-all" class="toggle-all" type="checkbox" />
+        <input id="toggle-all" class="toggle-all" type="checkbox" data-defo-toggle-all="{}" />
         <label for="toggle-all">Mark all as complete</label>
         <div class="list-mount"></div>
       </section>

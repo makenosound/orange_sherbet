@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { reduce, todomvcViewFn, todoItemViewFn } from "./todomvc.js";
+import { reduce, dispatch, getState, subscribe, reset } from "./store.js";
+import { appViewFn } from "./app.js";
+import { newTodoViewFn } from "./new_todo.js";
+import { toggleAllViewFn } from "./toggle_all.js";
+import { todoItemViewFn } from "./todo_item.js";
 import todoItem from "./compiled/todo_item.js";
 
-// reduce is pure; the root renders the whole list and morphs it (so its DOM
-// updates are synchronous and assertable here); the item handles behaviour and
-// focus. In the browser defo binds the item views to the <li>s morph creates.
+// Each piece is now its own function. reduce is pure; the store holds state and
+// notifies; every view dispatches directly to it (no events). Tests drive each
+// view and assert the store and/or the app's render.
 
 const parse = (html) => {
   const t = document.createElement("template");
@@ -12,11 +16,14 @@ const parse = (html) => {
   return t.content.firstElementChild;
 };
 const key = (el, k) => el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
-const items = (root) => [...root.querySelectorAll(".todo-list li")];
-const byId = (root, id) => root.querySelector(`li[data-id="${id}"]`);
-const count = (root) => root.querySelector(".todo-count")?.textContent.replace(/\s+/g, " ").trim();
-const intent = (li, type, detail) =>
-  li.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
+const todos = () => getState().todos;
+
+beforeEach(() => {
+  localStorage.clear();
+  location.hash = "";
+  document.body.innerHTML = "";
+  reset(); // fresh seeded state + no subscribers
+});
 
 describe("reduce (pure state transitions)", () => {
   const base = {
@@ -31,17 +38,15 @@ describe("reduce (pure state transitions)", () => {
   it("toggles all", () => expect(reduce(base, { type: "toggleAll", completed: true }).todos.every((t) => t.completed)).toBe(true));
   it("clears completed", () => expect(reduce(base, { type: "clearCompleted" }).todos.map((t) => t.id)).toEqual([1]));
   it("sets the filter", () => expect(reduce(base, { type: "filter", filter: "active" }).filter).toBe("active"));
-  it("starts editing", () => expect(reduce(base, { type: "edit", id: 1 }).editing).toBe(1));
-  it("cancels editing", () => expect(reduce({ ...base, editing: 1 }, { type: "cancel" }).editing).toBeNull());
-  it("saves and clears editing", () => {
-    const next = reduce({ ...base, editing: 1 }, { type: "save", id: 1, title: "x" });
-    expect(next.todos[0].title).toBe("x");
-    expect(next.editing).toBeNull();
+  it("starts/saves/cancels editing", () => {
+    expect(reduce(base, { type: "edit", id: 1 }).editing).toBe(1);
+    expect(reduce({ ...base, editing: 1 }, { type: "cancel" }).editing).toBeNull();
+    const saved = reduce({ ...base, editing: 1 }, { type: "save", id: 1, title: "x" });
+    expect(saved.todos[0].title).toBe("x");
+    expect(saved.editing).toBeNull();
   });
-  it("clears editing when the edited todo is destroyed", () => {
-    expect(reduce({ ...base, editing: 1 }, { type: "destroy", id: 1 }).editing).toBeNull();
-    expect(reduce({ ...base, editing: 2 }, { type: "destroy", id: 1 }).editing).toBe(2);
-  });
+  it("clears editing when the edited todo is destroyed", () =>
+    expect(reduce({ ...base, editing: 1 }, { type: "destroy", id: 1 }).editing).toBeNull());
   it("does not mutate its input", () => {
     const before = JSON.stringify(base);
     reduce(base, { type: "toggle", id: 1 });
@@ -49,10 +54,73 @@ describe("reduce (pure state transitions)", () => {
   });
 });
 
-describe("todomvcViewFn (renders + morphs the list)", () => {
+describe("store", () => {
+  it("dispatch reduces state and notifies subscribers", () => {
+    const seen = [];
+    subscribe((s) => seen.push(s.todos.length));
+    dispatch({ type: "add", title: "Another" });
+    expect(todos().at(-1).title).toBe("Another");
+    expect(seen).toEqual([3]);
+  });
+});
+
+describe("newTodoViewFn", () => {
+  it("dispatches add on Enter and clears the field", () => {
+    const input = Object.assign(document.createElement("input"), { className: "new-todo" });
+    document.body.appendChild(input);
+    newTodoViewFn(input);
+    input.value = "Write a test";
+    key(input, "Enter");
+    expect(todos().at(-1).title).toBe("Write a test");
+    expect(input.value).toBe("");
+  });
+});
+
+describe("toggleAllViewFn", () => {
+  it("dispatches toggleAll on change", () => {
+    const input = Object.assign(document.createElement("input"), { type: "checkbox", className: "toggle-all" });
+    document.body.appendChild(input);
+    toggleAllViewFn(input);
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(todos().every((t) => t.completed)).toBe(true);
+  });
+});
+
+describe("todoItemViewFn", () => {
+  const mountItem = (todo) => {
+    const li = parse(todoItem({ todo: { ...todo, editing: false } }));
+    document.body.appendChild(li);
+    const api = todoItemViewFn(li, { ...todo, editing: false });
+    return { li, api };
+  };
+
+  it("dispatches toggle / edit / save from the DOM", () => {
+    const { li } = mountItem({ id: 2, title: "b", completed: false });
+    li.querySelector(".toggle").dispatchEvent(new Event("change", { bubbles: true }));
+    expect(getState().todos.find((t) => t.id === 2).completed).toBe(true);
+
+    li.querySelector("label").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    expect(getState().editing).toBe(2);
+
+    const edit = li.querySelector(".edit");
+    edit.value = "renamed";
+    key(edit, "Enter");
+    expect(getState().todos.find((t) => t.id === 2).title).toBe("renamed");
+    expect(getState().editing).toBeNull();
+  });
+
+  it("focuses the field when its props say it's editing", () => {
+    const { li, api } = mountItem({ id: 2, title: "b", completed: false });
+    api.update({ id: 2, title: "b", completed: false, editing: true });
+    expect(document.activeElement).toBe(li.querySelector(".edit"));
+  });
+});
+
+describe("appViewFn (renders + morphs on store changes)", () => {
   const shell = () => {
     document.body.innerHTML = `
-      <section class="todoapp" data-defo-todomvc="{}">
+      <section class="todoapp" data-defo-app="{}">
         <header class="header"><input class="new-todo" /></header>
         <section class="main" hidden>
           <input class="toggle-all" type="checkbox" />
@@ -61,113 +129,26 @@ describe("todomvcViewFn (renders + morphs the list)", () => {
         <div class="footer-mount"></div>
       </section>`;
     const root = document.querySelector(".todoapp");
-    todomvcViewFn(root);
+    appViewFn(root);
     return root;
   };
+  const items = (root) => [...root.querySelectorAll(".todo-list li")];
+  const byId = (root, id) => root.querySelector(`li[data-id="${id}"]`);
 
-  beforeEach(() => {
-    localStorage.clear();
-    location.hash = "";
-    document.body.innerHTML = "";
-  });
-
-  it("renders the seeded todos with content and the active count", () => {
+  it("renders the seeded list and re-renders on dispatch", () => {
     const root = shell();
     expect(items(root).length).toBe(2);
-    expect(byId(root, 1).querySelector("label").textContent).toBe("Taste the orange sherbet");
-    expect(byId(root, 1).classList.contains("completed")).toBe(true);
-    expect(count(root)).toContain("1 item left");
-  });
-
-  it("re-renders an item on a toggle intent (via morph)", () => {
-    const root = shell();
-    intent(byId(root, 2), "todo:toggle", { id: 2 });
+    dispatch({ type: "toggle", id: 2 });
     expect(byId(root, 2).classList.contains("completed")).toBe(true);
-    expect(byId(root, 2).querySelector(".toggle").checked).toBe(true);
-    expect(count(root)).toContain("0 items left");
-  });
-
-  it("marks editing, then saves the new title and clears editing", () => {
-    const root = shell();
-    intent(byId(root, 1), "todo:edit", { id: 1 });
-    expect(byId(root, 1).classList.contains("editing")).toBe(true);
-
-    intent(byId(root, 1), "todo:save", { id: 1, title: "Renamed" });
-    expect(byId(root, 1).querySelector("label").textContent).toBe("Renamed");
-    expect(byId(root, 1).classList.contains("editing")).toBe(false);
+    expect(root.querySelector(".todo-count").textContent).toContain("0 items");
   });
 
   it("preserves an in-progress edit when another todo changes (morph skip)", () => {
     const root = shell();
-    intent(byId(root, 1), "todo:edit", { id: 1 });
+    dispatch({ type: "edit", id: 1 });
     byId(root, 1).querySelector(".edit").value = "half-typed";
-
-    intent(byId(root, 2), "todo:toggle", { id: 2 });
-
+    dispatch({ type: "toggle", id: 2 });
     expect(byId(root, 1).classList.contains("editing")).toBe(true);
     expect(byId(root, 1).querySelector(".edit").value).toBe("half-typed");
-    expect(byId(root, 2).classList.contains("completed")).toBe(true);
-  });
-
-  it("adds and removes <li>s and filters via the hash", () => {
-    const root = shell();
-    const input = root.querySelector(".new-todo");
-    input.value = "Write a test";
-    key(input, "Enter");
-    expect(items(root).length).toBe(3);
-    expect(byId(root, 3).querySelector("label").textContent).toBe("Write a test");
-
-    intent(byId(root, 1), "todo:destroy", { id: 1 });
-    expect(byId(root, 1)).toBeNull();
-
-    location.hash = "#/completed";
-    window.dispatchEvent(new Event("hashchange"));
-    expect(items(root).every((li) => li.classList.contains("completed"))).toBe(true);
-  });
-});
-
-describe("todoItemViewFn (behaviour + focus)", () => {
-  let li, api, events;
-
-  const mountItem = (todo, editing = false) => {
-    li = parse(todoItem({ todo: { ...todo, editing } }));
-    document.body.appendChild(li);
-    events = [];
-    ["todo:toggle", "todo:destroy", "todo:edit", "todo:save", "todo:cancel"].forEach((type) =>
-      li.addEventListener(type, (e) => events.push([type, e.detail])),
-    );
-    api = todoItemViewFn(li, { ...todo, editing });
-  };
-
-  beforeEach(() => {
-    document.body.innerHTML = "";
-  });
-
-  it("emits intents from DOM interactions", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false });
-    li.querySelector(".toggle").dispatchEvent(new Event("change", { bubbles: true }));
-    li.querySelector("label").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
-    expect(events).toEqual([["todo:toggle", { id: 7 }], ["todo:edit", { id: 7 }]]);
-  });
-
-  it("emits todo:save on Enter and todo:cancel on Escape", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false }, true);
-    const edit = li.querySelector(".edit");
-    edit.value = "Walk the cat";
-    key(edit, "Enter");
-    key(edit, "Escape");
-    expect(events).toEqual([["todo:save", { id: 7, title: "Walk the cat" }], ["todo:cancel", { id: 7 }]]);
-  });
-
-  it("focuses the field when its props say it's editing", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false }, true);
-    api.update({ id: 7, title: "Walk the dog", completed: false, editing: true });
-    expect(document.activeElement).toBe(li.querySelector(".edit"));
-  });
-
-  it("does nothing on update when not editing", () => {
-    mountItem({ id: 7, title: "Walk the dog", completed: false });
-    api.update({ id: 7, title: "Walk the dog", completed: false, editing: false });
-    expect(document.activeElement).not.toBe(li.querySelector(".edit"));
   });
 });

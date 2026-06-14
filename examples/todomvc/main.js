@@ -1,7 +1,17 @@
-// Entry point: register the view functions with defo, exactly as this repo's
-// app.ts does. defo binds `todomvc` to the root and `todoItem` to each <li> as
-// it enters the DOM (including the ones the root's morph adds on re-render).
+// Register every view function with defo. defo binds each to its element by the
+// data-defo-* attribute: app → .todoapp, newTodo → .new-todo, toggleAll →
+// .toggle-all, and todoItem → each <li> as the app's render adds it.
 import defo from "@icelab/defo";
-import { todomvcViewFn, todoItemViewFn } from "./todomvc.js";
+import { appViewFn } from "./app.js";
+import { newTodoViewFn } from "./new_todo.js";
+import { toggleAllViewFn } from "./toggle_all.js";
+import { todoItemViewFn } from "./todo_item.js";
 
-defo({ views: { todomvc: todomvcViewFn, todoItem: todoItemViewFn } });
+defo({
+  views: {
+    app: appViewFn,
+    newTodo: newTodoViewFn,
+    toggleAll: toggleAllViewFn,
+    todoItem: todoItemViewFn,
+  },
+});
