@@ -2,6 +2,10 @@
 
 *A little sugar for your ERB*
 
+> [!WARNING]
+> Orange Sherbet is experimental and pre-1.0. The API, the supported subset, and
+> the compiled output may change without notice — not recommended for production yet.
+
 Orange Sherbet compiles ERB templates (written in a subset of Ruby) into self-contained JavaScript
 modules – allowing you to render the same content on the server and in the browser.
 
