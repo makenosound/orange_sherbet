@@ -1,1 +1,1 @@
-{"version":3,"sources":["todo_list.html.erb"],"sourcesContent":["<ul class=\"todo-list\">\n  <%- todos.each do |todo| -%>\n    <%= render \"todo_item\", todo: todo %>\n  <%- end -%>\n</ul>\n"],"names":[],"mappings":";;;;;;;;;;;;EAAA;;EACA;IACA;IAAA;IAAA;;;EAAA"}
+{"version":3,"sources":["todo_list.html.erb"],"sourcesContent":["<ul class=\"todo-list\">\n  <%- todos.each do |todo| -%>\n    <%= render \"todo_item\", todo: todo %>\n  <%- end -%>\n</ul>\n"],"names":[],"mappings":";;;;;;;EAAA;;EACA;IACA;IAAA;IAAA;;;EAAA"}

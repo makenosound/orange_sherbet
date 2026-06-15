@@ -15,10 +15,16 @@ module OrangeSherbet
   # Raised when a template uses a construct outside the portable subset.
   class Unsupported < Error; end
 
-  # Compile a template's ERB source to [js_source, source_map_json].
+  # Compile a template's ERB source to [js_source, source_map_json]. The output
+  # imports its value helpers from a shared runtime module — write `runtime` to
+  # `runtime_filename` alongside the compiled templates (the CLI does this).
   def self.compile(name, source)
     Compiler.compile(name, source)
   end
+
+  # The shared runtime module's source and filename.
+  def self.runtime = Compiler::RUNTIME
+  def self.runtime_filename = Compiler::RUNTIME_FILENAME
 end
 
 require_relative "orange_sherbet/compiler"

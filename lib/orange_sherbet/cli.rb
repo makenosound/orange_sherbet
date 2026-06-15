@@ -42,7 +42,9 @@ module OrangeSherbet
         count += 1
       end
 
-      puts "Compiled #{count} templates → #{out}/*.js (+ .js.map)"
+      out.join(OrangeSherbet.runtime_filename).write(OrangeSherbet.runtime)
+
+      puts "Compiled #{count} templates → #{out}/*.js (+ .js.map, #{OrangeSherbet.runtime_filename})"
       0
     end
 

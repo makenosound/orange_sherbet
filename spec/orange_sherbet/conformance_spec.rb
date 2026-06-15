@@ -36,6 +36,7 @@ RSpec.describe "cross-language conformance" do
         js, = OrangeSherbet::Compiler.compile(name, File.read(path))
         File.write(File.join(dir, "#{name}.js"), js)
       end
+      File.write(File.join(dir, OrangeSherbet.runtime_filename), OrangeSherbet.runtime)
       File.write(File.join(dir, "data.json"), JSON.generate(data))
       File.write(File.join(dir, "run.mjs"), <<~JS)
         import { readFileSync } from "node:fs";

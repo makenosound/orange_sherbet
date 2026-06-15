@@ -1,11 +1,6 @@
 // AUTO-GENERATED from todo_item.html.erb — do not edit.
 import todo_item_content from "./todo_item_content.js";
-const __esc = (v) =>
-  v == null
-    ? ""
-    : String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const __s = (v) => (v == null ? "" : String(v));
-const __truthy = (v) => v != null && v !== false;
+import { __esc, __s, __truthy } from "./__runtime.js";
 
 export default function todo_item(locals = {}) {
   const { todo } = locals;

@@ -22,7 +22,8 @@ Compile a directory as a build step:
 
 ```bash
 orange_sherbet compile app/templates/portable app/assets/js/templates
-# → app/assets/js/templates/<name>.js (+ .js.map) per template
+# → app/assets/js/templates/<name>.js (+ .js.map) per template, plus a shared
+#   __runtime.js (the value helpers) that each template imports
 ```
 
 The generated module default-exports a render function:
