@@ -5,6 +5,8 @@
 Orange Sherbet compiles ERB templates (written in a subset of Ruby) into self-contained JavaScript
 modules – allowing you to render the same content on the server and in the browser.
 
+**[Live example: TodoMVC →](https://makenosound.github.io/orange_sherbet/examples/todomvc/)** ([source](examples/todomvc))
+
 ## Usage
 
 ```ruby
@@ -23,7 +25,7 @@ Compile a directory as a build step:
 ```bash
 orange_sherbet compile app/templates/portable app/assets/js/templates
 # → app/assets/js/templates/<name>.js (+ .js.map) per template, plus a shared
-#   __runtime.js (the value helpers) that each template imports
+#   sherbet-runtime.js (the value helpers) that each template imports
 ```
 
 The generated module default-exports a render function:

@@ -1,5 +1,5 @@
 // AUTO-GENERATED from todo_item_content.html.erb — do not edit.
-import { __esc, __truthy } from "./__runtime.js";
+import { __esc, __truthy } from "./sherbet-runtime.js";
 
 export default function todo_item_content(locals = {}) {
   const { todo } = locals;

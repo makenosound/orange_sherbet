@@ -1,5 +1,5 @@
 // AUTO-GENERATED from todo_footer.html.erb — do not edit.
-import { __esc, __truthy } from "./__runtime.js";
+import { __esc, __truthy } from "./sherbet-runtime.js";
 
 export default function todo_footer(locals = {}) {
   const { active, filter, has_completed } = locals;
