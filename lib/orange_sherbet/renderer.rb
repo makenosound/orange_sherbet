@@ -6,9 +6,9 @@ require "pathname"
 
 module OrangeSherbet
   # Server-side renderer — the source of truth that OrangeSherbet's compiled JS is
-  # held identical to. Runs templates through real Ruby via Erubi (the same
-  # engine hanami-view uses) with `escape: true`, so `<%= %>` auto-escapes via
-  # Erubi.h — matching the compiled JS's __esc (CGI.escapeHTML) table.
+  # held identical to. Runs templates through real Ruby via Erubi with
+  # `escape: true`, so `<%= %>` auto-escapes via Erubi.h — matching the compiled
+  # JS's __esc (CGI.escapeHTML) table.
   #
   #   renderer = OrangeSherbet::Renderer.new("app/templates/portable")
   #   renderer.render("card", post: post)

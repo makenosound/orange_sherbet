@@ -1,25 +1,25 @@
 {
   "title": "Latest news",
-  "theme": "hanami",
+  "theme": "citrus",
   "posts": [
     {
-      "org": "hanami",
-      "title": "Hanami 2.3 & the road ahead",
-      "url_path": "/blog/hanami-2-3",
+      "org": "citrus",
+      "title": "Orange Sherbet 1.0 & the road ahead",
+      "url_path": "/blog/orange-sherbet-1-0",
       "published_datetime": "2026-05-01T09:00:00Z",
       "published_date": "1 May 2026",
-      "excerpt": "Views, slices & <new> things.",
-      "html_summary": "<strong>Views</strong> & more.",
+      "excerpt": "Views, partials & <new> things.",
+      "html_summary": "<strong>Templates</strong> & more.",
       "featured": true
     },
     {
       "org": null,
-      "title": "Dry-rb tips",
-      "url_path": "/blog/dry-rb-tips",
+      "title": "Tips & tricks",
+      "url_path": "/blog/tips-and-tricks",
       "published_datetime": "2026-04-15T09:00:00Z",
       "published_date": "15 Apr 2026",
       "excerpt": "Small, sharp tools.",
-      "html_summary": "Composable <em>operations</em>.",
+      "html_summary": "Composable <em>helpers</em>.",
       "featured": false
     }
   ]
