@@ -10,8 +10,13 @@
 const STORAGE_KEY = "orange-sherbet-todomvc";
 
 const seedTodos = () => [
-  { id: 1, title: "Taste the orange sherbet", completed: true },
-  { id: 2, title: "Render this list with Orange Sherbet", completed: false },
+  {
+    id: 1,
+    title: "I’m going to go across the street and get you some orange sherbet",
+    completed: true,
+  },
+  { id: 2, title: "I brought you your orange sher-bert", completed: true },
+  { id: 3, title: "Render this list with Orange Sherbet", completed: false },
 ];
 
 const loadTodos = () => {
@@ -72,9 +77,10 @@ export const reduce = (state, action) => {
 let state;
 const listeners = new Set();
 
-// Fresh state from storage + no subscribers. Called once at load, and by tests.
-export const reset = () => {
-  state = { todos: loadTodos(), filter: filterFromHash(), editing: null };
+// Reset to `initial` (or fresh state from storage) and drop subscribers. Called
+// once at load, and by tests that want a deterministic starting state.
+export const reset = (initial) => {
+  state = initial ?? { todos: loadTodos(), filter: filterFromHash(), editing: null };
   listeners.clear();
 };
 reset();

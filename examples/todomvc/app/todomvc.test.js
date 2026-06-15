@@ -4,7 +4,7 @@ import { appViewFn } from "./app.js";
 import { newTodoViewFn } from "./new_todo.js";
 import { toggleAllViewFn } from "./toggle_all.js";
 import { todoItemViewFn } from "./todo_item.js";
-import todoItem from "./compiled/todo_item.js";
+import todoItem from "../compiled/todo_item.js";
 
 // Each piece is now its own function. reduce is pure; the store holds state and
 // notifies; every view dispatches directly to it (no events). Tests drive each
@@ -56,11 +56,12 @@ describe("reduce (pure state transitions)", () => {
 
 describe("store", () => {
   it("dispatch reduces state and notifies subscribers", () => {
+    reset({ todos: [{ id: 1, title: "a", completed: false }], filter: "all", editing: null });
     const seen = [];
     subscribe((s) => seen.push(s.todos.length));
     dispatch({ type: "add", title: "Another" });
     expect(todos().at(-1).title).toBe("Another");
-    expect(seen).toEqual([3]);
+    expect(seen).toEqual([2]);
   });
 });
 
@@ -96,6 +97,7 @@ describe("todoItemViewFn", () => {
   };
 
   it("dispatches toggle / edit / save from the DOM", () => {
+    reset({ todos: [{ id: 2, title: "b", completed: false }], filter: "all", editing: null });
     const { li } = mountItem({ id: 2, title: "b", completed: false });
     li.querySelector(".toggle").dispatchEvent(new Event("change", { bubbles: true }));
     expect(getState().todos.find((t) => t.id === 2).completed).toBe(true);
@@ -135,12 +137,17 @@ describe("appViewFn (renders + morphs on store changes)", () => {
   const items = (root) => [...root.querySelectorAll(".todo-list li")];
   const byId = (root, id) => root.querySelector(`li[data-id="${id}"]`);
 
-  it("renders the seeded list and re-renders on dispatch", () => {
+  it("renders the list and re-renders on dispatch", () => {
+    reset({
+      todos: [{ id: 1, title: "a", completed: false }, { id: 2, title: "b", completed: false }],
+      filter: "all",
+      editing: null,
+    });
     const root = shell();
     expect(items(root).length).toBe(2);
     dispatch({ type: "toggle", id: 2 });
     expect(byId(root, 2).classList.contains("completed")).toBe(true);
-    expect(root.querySelector(".todo-count").textContent).toContain("0 items");
+    expect(root.querySelector(".todo-count").textContent).toContain("1 item left");
   });
 
   it("preserves an in-progress edit when another todo changes (morph skip)", () => {

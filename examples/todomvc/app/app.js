@@ -4,8 +4,8 @@
 // directly.
 import { morph } from "morphlex";
 import { dispatch, filterFromHash, getState, subscribe } from "./store.js";
-import todoList from "./compiled/todo_list.js";
-import todoFooter from "./compiled/todo_footer.js";
+import todoList from "../compiled/todo_list.js";
+import todoFooter from "../compiled/todo_footer.js";
 
 const visible = (state) =>
   state.todos.filter((t) =>

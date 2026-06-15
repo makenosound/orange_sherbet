@@ -12,16 +12,17 @@ and `morphlex` load from a CDN via the import map in `index.html`.
 templates/*.html.erb ──orange_sherbet──▶ compiled/*.js ──imported by──▶ the view functions
 ```
 
-The app is split into a small store and one view function per element:
+`templates/` holds the ERB and `compiled/` its generated JS; the app itself
+lives in `app/` — a small store and one view function per element:
 
 | File | Role |
 |---|---|
-| `store.js` | the reducer + state + `dispatch`/`subscribe` (a shared singleton) |
-| `app.js` | renders the whole list on every change and morphs it onto the DOM |
-| `new_todo.js` | the header input — dispatches `add` |
-| `toggle_all.js` | the "mark all complete" checkbox — dispatches `toggleAll` |
-| `todo_item.js` | one `<li>` — dispatches toggle/destroy/edit/save/cancel; focuses on edit |
-| `main.js` | registers them all with defo |
+| `app/store.js` | the reducer + state + `dispatch`/`subscribe` (a shared singleton) |
+| `app/app.js` | renders the whole list on every change and morphs it onto the DOM |
+| `app/new_todo.js` | the header input — dispatches `add` |
+| `app/toggle_all.js` | the "mark all complete" checkbox — dispatches `toggleAll` |
+| `app/todo_item.js` | one `<li>` — dispatches toggle/destroy/edit/save/cancel; focuses on edit |
+| `app/main.js` | registers them all with defo |
 
 ## What it shows
 
